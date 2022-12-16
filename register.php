@@ -1,51 +1,132 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<title>Home</title>
-	<link rel="stylesheet" type="text/css" href="stylesheet.css">
-</head>
-<body>
+<?php
 
-<div class="header">
-	<h2>Registered</h2>
-</div>
-<div class="content">
+require_once "connection.php";
 
-    <?php
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "register";
+if(isset($_REQUEST['btn_register']))
+{
+  $username = $_REQUEST['txt_username'];
+  $email = $_REQUEST['txt_email'];
+  $password = $_REQUEST['txt_password'];
+  $role = $_REQUEST['txt_role'];
 
-// Create connection
-$conn = mysqli_connect($servername, $username, $password, $dbname);
-// Check connection
-if (!$conn) {
-  die("Connection failed: " . mysqli_connect_error());
-}
-
-$sql = "SELECT firstname, middlename, lastname, gender, username, email, password FROM user";
-$result = mysqli_query($conn, $sql);
-
-if (mysqli_num_rows($result) > 0) {
-  // output data of each row
-  while($row = mysqli_fetch_assoc($result)) {
-    echo "Firstname: " . $row["firstname"] . "<br>";
-    echo "Middlename: " . $row["middlename"] . "<br>";
-    echo "Lastname: " . $row["lastname"] . "<br>";
-    echo "Gender: " . $row["gender"] . "<br>";
-    echo "Username: " . $row["username"] . "<br>";
-    echo "Email: " . $row["email"] . "<br>";
-    echo "Password: " . $row["password"] . "<br>";
-    echo "<br>";
+  if(empty($username)){
+    $errorMsg[]="Please enter username";
   }
-} else {
-  echo "0 results";
+  else if(empty($email)){
+    $errorMsg[]="Please enter email";
+  }
+  else if(!filter_var($email, FILTER_VALIDATE_EMAIL)){
+    $errorMsg[]="Please enter a valid email address";
+  }
+  else if (empty($password)){
+    $errorMsg[]="Please enter password";
+  }
+  else if(strlen($password) < 6){
+    $errorMsg[]="Password must be atleast 6 characters";
+  }
+  else if(empty($role)){
+    $errorMsg[]="Please select role";
+  }
+  else
+  {
+    try
+    {
+      $select_stmt=$db->prepare("SELECT username, email FROM masterlogin
+        WHERE username=:uname OR email=:uemail");
+      $select_stmt->bindParam(":uname", $username);
+      $select_stmt->bindParam(":uemail", $email);
+      $select_stmt->execute();
+      $row=$select_stmt->fetch(PDO::FETCH_ASSOC);
+
+      if($row["username"]==$username){
+        $errorMsg[]="Sorry username already exists";
+      }
+      else if($row["email"]==$email){
+        $errorMsg[]="Sorry email already exists";
+      }
+
+      else if(!isset($errorMsg))
+      {
+        $insert_stmt=$db->prepare("INSERT INTO masterlogin(username,email,password,role) VALUES(:uname,:uemail,:upassword,:urole)");
+        $insert_stmt->bindParam(":uname", $username);
+        $insert_stmt->bindParam(":uemail", $email);
+        $insert_stmt->bindParam(":upassword", $password);
+        $insert_stmt->bindParam(":urole", $role);
+
+        if($insert_stmt->execute())
+        {
+          $registerMsg="Register Successfully...Wait Login Page";
+          header("refresh:4;index.php");
+        }
+      }
+    }
+    catch(PDOException $e)
+    {
+      echo $e->getMessage();
+    }
+  }
 }
 
-mysqli_close($conn);
 ?>
-</div>
 
-</body>
-</html>
+<?php
+if(isset($errorMsg))
+{
+  foreach($errorMsg as $error);
+{
+echo $error;
+}
+}
+if(isset($registerMsg))
+{
+  echo $registerMsg;
+}
+?>
+
+<form method="post" class="form-horizontal">
+
+  <div class="form-group">
+    <label class="col-sm-3 control-label">Username</label>
+    <div class="col-sm-6">
+      <input type="text" name="txt_username" class="form-control" placeholder="enter username" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-3 control-label">Email</label>
+    <div class="col-sm-6">
+      <input type="text" name="txt_email" class="form-control" placeholder="enter email" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-3 control-label">Password</label>
+    <div class="col-sm-6">
+      <input type="password" name="txt_password" class="form-control" placeholder="enter password" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-3 control-label">Select Type</label>
+    <div class="col-sm-6">
+      <select class="form-control" name="txt_role">
+        <option value="" selected="selected"> - select role - </option>
+        <option value="seller">Seller</option>
+        <option value="buyer">Buyer</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <div class="col-sm-offset-3 col-sm-9 m-t-15">
+      <input type="submit" name="btn_register" class="btn btn-primary" value="Register">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <div class="col-sm-offset-3 col-sm-9 m-t-15">
+      You have an account register here? <a href="index.php"><p class="text-info">Login Account</p></a>
+    </div>
+  </div>
+
+</form>
